@@ -188,7 +188,7 @@ class AuthenticationContext(object):
         if not self._secret_store:
             raise UndefinedSecretsException
 
-        return self._secret_store.get_simple("jwt/authentication/secret")
+        return self._secret_store.get_versioned("secret/authentication/public-key")
 
     def attach_context(self, context):
         """.. deprecated:: 0.23.0
@@ -221,13 +221,15 @@ class AuthenticationContext(object):
         elif not self.defined:
             return False
 
-        try:
-            self._payload = jwt.decode(self._token, self._secret(),
-                                       algorithms='RS256')
-            self._valid = True
-        except jwt.ExpiredSignatureError:  # when the token has expired
-            self._valid = False
-        except jwt.DecodeError:  # When the token is malformed
+        secret = self._secret()
+        for secret_value in secret.all_versions:
+            try:
+                self._payload = jwt.decode(self._token, self._secret(),
+                                           algorithms='RS256')
+                self._valid = True
+            except jwt.InvalidSignatureError:
+                pass
+        else:
             self._valid = False
 
         return self._valid
