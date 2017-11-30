@@ -88,10 +88,10 @@ class BaseplateConfigurator(object):
 
     # TODO: remove the default on trust_trace_headers once apps are updated
     def __init__(self, baseplate, trust_trace_headers=False,
-                 auth_factory=None):
+                 edge_context_factory=None):
         self.baseplate = baseplate
         self.trust_trace_headers = trust_trace_headers
-        self.auth_factory = auth_factory or AuthenticationContextFactory()
+        self.edge_context_factory = edge_context_factory
 
     def _on_new_request(self, event):
         request = event.request
@@ -118,17 +118,11 @@ class BaseplateConfigurator(object):
                     flags=flags,
                 )
 
-                authn_token = request.headers.get("X-Authentication", None)
-                request_context_payload = request.headers.get("X-Edge-Request",
-                                                              None)
-                authentication_context = \
-                    self.auth_factory.make_context(authn_token)
-                authentication_context.attach_context(request)
-                request_context = EdgeRequestContext(
-                    header=request_context_payload,
-                    authentication_context=authentication_context,
-                )
-                request_context.attach_context(request)
+                if self.edge_context_factory:
+                    edge_payload = request.headers.get("X-Edge-Request", None)
+                    edge_context = self.edge_context_factory.from_upstream(
+                        edge_payload)
+                    edge_context.attach_context(request)
             except (KeyError, ValueError):
                 pass
 

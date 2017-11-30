@@ -6,6 +6,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
+import functools
 import warnings
 
 
@@ -18,3 +19,16 @@ def warn_deprecated(message):
 
     """
     warnings.warn(message, DeprecationWarning, stacklevel=3)
+
+
+class cached_property(object):
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        functools.update_wrapper(self, wrapped)
+
+    def __get__(self, obj, type=None):
+        if obj is None:
+            return self
+        ret = self.wrapped(obj)
+        setattr(obj, self.wrapped.__name__, ret)
+        return ret

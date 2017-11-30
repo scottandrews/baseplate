@@ -52,10 +52,10 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
         used.
 
     """
-    def __init__(self, logger, baseplate, auth_factory=None):
+    def __init__(self, logger, baseplate, edge_context_factory=None):
         self.logger = logger
         self.baseplate = baseplate
-        self.auth_factory = auth_factory or AuthenticationContextFactory()
+        self.edge_context_factory = edge_context_factory
 
     def getHandlerContext(self, fn_name, server_context):
         context = RequestContext()
@@ -78,15 +78,11 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
                 flags=flags,
             )
 
-            authn_token = headers.get(b"Authentication", None)
-            request_context_payload = headers.get(b"Edge-Request", None)
-            authentication_context = self.auth_factory.make_context(authn_token)
-            authentication_context.attach_context(context)
-            request_context = EdgeRequestContext(
-                header=request_context_payload,
-                authentication_context=authentication_context,
-            )
-            request_context.attach_context(context)
+            if self.edge_context_factory:
+                edge_payload = headers.get(b"Edge-Request", None)
+                edge_context = self.edge_context_factory.from_upstream(
+                    edge_payload)
+                edge_context.attach_context(context)
         except (KeyError, ValueError):
             pass
 
